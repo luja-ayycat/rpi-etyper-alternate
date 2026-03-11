@@ -1,61 +1,131 @@
-A fork of [etyper](https://github.com/Quackieduckie/etyper) designed to work with the Raspberry Pi Zero 2 W. Now in landscape mode.
+A fork of a [T-KONES etyper Landscape branch](https://github.com/T-KONES/rpi-etyper/tree/landscape) designed to work with the Raspberry Pi Zero 2W, which is fork of [etyper](https://github.com/Quackieduckie/etyper).
 
-**Known issues:** 
-The keyboard layout picker screen is a little wonky in landscape. The options extend past the bottom margin, causing the Colemak layout option to appear offscreen (it's still there and has NOT been removed! Just scroll down until the black highlight disappears).
+My brother and I were having trouble getting the T-KONES fork to work so we started expirementing and cleaning up some of the slapdash documentation left in both on the README.md (the main page), and epd42_driver.py
 
-Tested on the **Raspberry Pi Zero 2 W** running **64-bit Raspberry Pi OS Lite (Bookworm)** with a **Waveshare 4.2" V2 e-Paper Module**. Running it on Trixie might cause problems due to its use of `libgpiod2` (or at least that's my understanding).
+> ***Currently attempting testing on the **Raspberry Pi Zero 2W** running **64-bit Raspberry Pi OS (Debian 12) Armbian Lite (Bookworm)** with a **Waveshare 4.2" V2 e-Paper Module**. Will update if we can get it working properly.***
+ 
+---
 
-This version has been found to support wireless keyboard connections via a 2.4GHz USB receiver. It also completely clears the screen in sleep mode and upon initiating a clean shutdown of the Pi or terminating the `typewriter.py` script.
+# Getting started
 
-To run this fork on the Pi, you need to set the line values of GPIO 27 and GPIO 23 to 0 and connect CS and RST to the corresponding pins. Set the GPIO line values by running `gpioset gpiochip0 27=0 23=0`.
+### 1. Pray to the Machine God
+Considering how much trouble we've had trying to get this working, it can only help.
 
-You do not need to enable SPI1 for this fork.
+### 2. Hardware Setup
 
-**Wiring**
+- **Display**: Waveshare 4.2" V2 display
+- **SBC**: Raspberry Pi Zero 2W Rev 1.0
+- **A microSD card** and some way to write to it
 
-| Display Pin | Header Pin | GPIO       | Function           |
-|-------------|-----------|------------|--------------------|
-| DIN / MOSI  | Pin 19    | 10         | SPI0 MOSI (hardware) |
-| CLK / SCK   | Pin 23    | 11         | SPI0 CLK (hardware)  |
-| CS          | Pin 13    | 27         | Chip Select (GPIO)   |
-| DC          | Pin 22    | 25         | Data/Command (GPIO)  |
-| RST         | Pin 16    | 23         | Reset (GPIO)         |
-| BUSY        | Pin 18    | 24         | Busy signal (GPIO input) |
-| VCC         | Pin 17    | 3.3V       | Power               |
-| GND         | Pin 20    | GND        | Ground               |
+**Wiring the Waveshare to the Raspberry Pi Zero**
 
-# etyper
+Arranged as it physically appears on the Waveshare Display itself:
+|DISPLAY | WIRE COLOR | PIN # | RASPI GPIO ##|
+|--------|-----------|---------|-------------|
+|BUSY    | Purple    |  PIN 18 | GPIO 24|
+|RST     | White     |  PIN 11 | GPIO 17|
+|DC      | Green     |  PIN 22 | GPIO 25|
+|CS      | Orange    |  PIN 24 | GPIO 8|
+|CLK     | Yellow    |  PIN 23 | GPIO 11|
+|DIN/MOSI | Blue      |  PIN 19 | GPIO 10|
+|GND     | Red       |  PIN 20 | GND|
+|VCC     | Gray      |  PIN 17 | PWR |
 
-> **Disclaimer**: This project was mostly generated with AI assistance (Claude / Cursor).
+[Waveshare display manufacturer pinout reference](https://www.waveshare.com/wiki/4.2inch_e-Paper_Module_Manual#Working_With_Raspberry_Pi)
+[Rasberry Pi pinout reference](https://pinout.xyz/)
+
+---
+
+# Software Setup
+
+### 1. Getting the OS
+Armbian Lite (bookworm) (Debian 12 -Legacy) [Written to microSD via the Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+
+In the setup configuration, before you write, give your Pi a hostname, enable SSH, and enable the WiFi to connect to your local router. Set your username and password too.
+
+Once you insert your micro SD card and power on, you can use [Putty, or another SSH client](https://putty.org) to connect to your Pi using the hostname you chose, and then sign in using whatever credentials you set, if you set any. If all goes right, you should be SSH-ed in, looking at the terminal.
+
+### 2. Enable SPI
+To enable hardware SPI via command `sudo raspi-config`
+
+navigate to INTERFACE > SPI then select YES. Then preform a reboot using `sudo reboot`
+
+Check to see is the SPI interface is correctly running `ls /dev/spidev*`
+
+This is return something like spidev0.0 and/or spidev0.1
+As this is supposed to run off of 0.0, if you get 0.1 showing up it could be a problem.
+
+### 3. Update packages and install Git
+`sudo apt update`
+then
+`sudo apt install git`
+I don't know if you need to install the extra things that Git asks you to install. We chose yes.
+
+### 4. Clone this repo
+`git clone --branch landscape --single-branch https://github.com/luja-ayycat/rpi-etyper`
+
+### 5. Install dependencies and service
+
+Use the included installer, which installs all dependencies, disables the conflicting system dnsmasq service, and optionally sets up auto-start on boot:
+
+```bash
+cd rpi-etyper
+sudo bash install.sh
+```
+
+Or install manually:
+
+```bash
+apt-get update
+apt-get install python3-spidev python3-libgpiod python3-pil python3-evdev \
+               python3-dbus python3-gi dnsmasq openssl
+systemctl disable --now dnsmasq   # prevent conflict with etyper's own instance
+```
+
+> `python3-libgpiod`, `python3-evdev`, `python3-dbus`, and `python3-gi` must be installed via apt (not pip).
+> `dnsmasq` is required for Bluetooth file transfer. The system dnsmasq service must be disabled to avoid a port conflict.
+
+### 5. Run the typewriter
+
+```bash
+sudo python3 typewriter.py
+```
+
+Or to test the display separately:
+
+```bash
+python3 examples/hello_world.py
+```
+
+## Usage
+
+```python
+from epd42_driver import EPD42
+from PIL import Image, ImageDraw, ImageFont
+
+with EPD42() as epd:
+    # Initialize and clear
+    epd.init()
+    epd.clear()
+    epd.sleep()
+
+    # Create an image
+    img = Image.new("1", (epd.width, epd.height), 255)  # white background
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 100), "Hello!", fill=0)
+
+    # Display it
+    epd.init()
+    epd.display_image(img)
+    epd.sleep()
+```
+---
+# etyper program and features
+
+> **Disclaimer**: This project was mostly generated with AI assistance (Claude / Cursor). Further modified in this fork based on feedback from ChatGPT (probably should have used Claude tho)
 > It has been tested on real hardware but may contain bugs or suboptimal patterns.
 > Contributions and corrections are welcome.
-
-E-Paper display driver and distraction-free typewriter for the **WeAct Studio 4.2" E-Paper Module** (SSD1683, 400x300 B/W) on the **Orange Pi Zero 2W** (Allwinner H618, Armbian).
-
-## Hardware
-
-- **Display**: WeAct Studio 4.2" E-Paper (SSD1683 controller, 400x300px)
-  - Compatible with Waveshare 4.2" V2 displays
-- **SBC**: Orange Pi Zero 2W (Allwinner H618, 64-bit ARM)
-- **OS**: Armbian (Debian-based)
-
-## Wiring
-
-Follows the [WeAct Studio Raspberry Pi pinout](https://github.com/WeActStudio/WeActStudio.EpaperModule):
-
-| Display Pin | Header Pin | GPIO       | Function           |
-|-------------|-----------|------------|--------------------|
-| DIN / MOSI  | Pin 19    | PH7 (231)  | SPI1 MOSI (hardware) |
-| CLK / SCK   | Pin 23    | PH6 (230)  | SPI1 CLK (hardware)  |
-| CS          | Pin 24    | PH5 (229)  | Chip Select (GPIO)   |
-| DC          | Pin 22    | PI6 (262)  | Data/Command (GPIO)  |
-| RST         | Pin 11    | PH2 (226)  | Reset (GPIO)         |
-| BUSY        | Pin 18    | PH4 (228)  | Busy signal (GPIO input) |
-| VCC         | Pin 17    | 3.3V       | Power               |
-| GND         | Pin 20    | GND        | Ground               |
-
-> **Important**: CS is controlled via GPIO (not hardware SPI CS). The hardware SPI1 CS1 on Pin 26 (PH9) is **not used**. This is because the WeAct pinout places CS on Pin 24, which is not the Orange Pi's SPI1 CS pin.
-
+> **Known issues:**  The keyboard layout picker screen is a little wonky in landscape. The options extend past the bottom margin, causing the Colemak layout option to appear offscreen (it's still there and has NOT been removed! Just scroll down until the black highlight disappears).
 ## Typewriter Mode
 
 etyper includes a distraction-free typewriter application inspired by [ZeroWriter](https://github.com/zerowriter/zerowriter1).
@@ -114,6 +184,8 @@ The bottom of the screen shows: `*doc_20260115_143022.txt L12:5 482c`
 - `L12:5` = cursor at line 12, column 5
 - `482c` = total character count
 
+---
+
 ### Running
 
 **Run manually:**
@@ -167,79 +239,6 @@ Download your documents wirelessly via Bluetooth PAN (Personal Area Network). No
 - If your browser forces HTTPS errors, try `http://10.44.0.1:8080` as a fallback
 - Requires `python3-dbus`, `python3-gi`, and `dnsmasq` on the Pi
 
----
-
-## Setup
-
-### 1. Enable SPI1
-
-Add the SPI1 device tree overlay in `/boot/armbianEnv.txt`:
-
-```
-overlays=spidev1_1
-```
-
-Reboot. Verify `/dev/spidev1.1` exists:
-
-```bash
-ls /dev/spidev*
-```
-
-### 2. Install dependencies and service
-
-The easiest way is to use the included installer, which installs all dependencies, disables the conflicting system dnsmasq service, and optionally sets up auto-start on boot:
-
-```bash
-cd etyper
-sudo bash install.sh
-```
-
-Or install manually:
-
-```bash
-apt-get update
-apt-get install python3-spidev python3-libgpiod python3-pil python3-evdev \
-               python3-dbus python3-gi dnsmasq openssl
-systemctl disable --now dnsmasq   # prevent conflict with etyper's own instance
-```
-
-> `python3-libgpiod`, `python3-evdev`, `python3-dbus`, and `python3-gi` must be installed via apt (not pip).
-> `dnsmasq` is required for Bluetooth file transfer. The system dnsmasq service must be disabled to avoid a port conflict.
-
-### 3. Run the typewriter
-
-```bash
-sudo python3 typewriter.py
-```
-
-Or to test the display separately:
-
-```bash
-python3 examples/hello_world.py
-```
-
-## Usage
-
-```python
-from epd42_driver import EPD42
-from PIL import Image, ImageDraw, ImageFont
-
-with EPD42() as epd:
-    # Initialize and clear
-    epd.init()
-    epd.clear()
-    epd.sleep()
-
-    # Create an image
-    img = Image.new("1", (epd.width, epd.height), 255)  # white background
-    draw = ImageDraw.Draw(img)
-    draw.text((50, 100), "Hello!", fill=0)
-
-    # Display it
-    epd.init()
-    epd.display_image(img)
-    epd.sleep()
-```
 
 ### API Reference
 
@@ -259,21 +258,10 @@ with EPD42() as epd:
 | `epd.close()` | Release GPIO and SPI resources |
 | `EPD42.getbuffer(image)` | Static: convert PIL Image to raw buffer |
 
-### Custom pin mapping
-
-```python
-epd = EPD42(pins={
-    "dc": 262,
-    "cs": 229,
-    "rst": 226,
-    "busy": 228,
-})
-```
 
 ## Technical Details
 
-- **SPI**: Hardware SPI1 at 4MHz, Mode 0. CS managed via GPIO.
-- **Controller**: SSD1683 (Solomon Systech)
+- **SPI**: Hardware SPI0 at 4MHz, Mode 0.
 - **Full refresh**: ~4 seconds, no ghosting. Used on startup and every 5 minutes.
 - **Partial refresh**: ~0.5 seconds, slight ghosting. Used for typing updates.
 - **Display buffer**: 15,000 bytes (400/8 * 300). 1 bit per pixel, MSB first. 1=white, 0=black.
