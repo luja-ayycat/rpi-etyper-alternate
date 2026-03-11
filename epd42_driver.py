@@ -1,17 +1,29 @@
 """
-epd42_driver.py - WeAct Studio 4.2" E-Paper Display Driver
+epd42_driver.py - Waveshare 4.2" V2 e-Paper Module Display Driver
 SSD1683 controller, 400x300 pixels, Black/White
 
-Target: Orange Pi Zero 2W (Allwinner H618) running Armbian
+Target: Raspi 0 2w Rev 1.0 running Armbian (bookworm lite) (debian linux Ver 12)
 Uses: spidev (hardware SPI1) + gpiod (libgpiod) for GPIO control
 
-Pin mapping (WeAct Raspberry Pi header pinout):
-  MOSI  -> Pin 19 (PH7, SPI1_MOSI)
-  CLK   -> Pin 23 (PH6, SPI1_CLK)
-  CS    -> Pin 24 (PH5, GPIO 229) - manual GPIO control
-  DC    -> Pin 22 (PI6, GPIO 262)
-  RST   -> Pin 11 (PH2, GPIO 226)
-  BUSY  -> Pin 18 (PH4, GPIO 228)
+Pin mapping (Waveshare 4.2" V2 e-Paper Module Raspberry Pi header pinout):
+  MOSI  -> Pin 19 (GPIO 10, SPI0_MOSI)
+  CLK   -> Pin 23 (GPIO 11, SPI0_CLK)
+  CS    -> Pin 24 (GPIO 8)
+  DC    -> Pin 22 (GPIO 25)
+  RST   -> Pin 11 (GPIO 17)
+  BUSY  -> Pin 18 (GPIO 24)
+
+According to the 'jippity' the pin out should be this
+Arranged as it physically appears on the Waveshare Display itself:
+DISPLAY  WIRE COLOR  PIN #    RASPI GPIO ##
+BUSY     Purple      PIN 18 | GPIO  24
+RST      White       PIN 11 | GPIO 17
+DC       Green       PIN 22 | GPIO 25
+CS       Orange      PIN 24 | GPIO 8
+CLK      Yellow      PIN 23 | GPIO 11
+DIN/MOSI Blue        PIN 19 | GPIO 10
+GND      Red         PIN 20 | GND
+VCC      Gray        PIN 17 | PWR 
 
 Note: Hardware SPI1 CS1 (Pin 26 / PH9) is NOT used.
       CS is controlled manually via GPIO for proper DC/CS timing.
@@ -29,20 +41,20 @@ EPD_HEIGHT = 300
 # Default GPIO line numbers (gpiochip0) for Raspberry Pi Zero 2W
 DEFAULT_PINS = {
     "dc": 25,    # Pin 22 
-    "cs": 27,    # Pin 13
-    "rst": 23,   # Pin 16
+    #"cs": 8,    # Pin 24
+    "rst": 17,   # Pin 11
     "busy": 24,  # Pin 18
 }
 
 # Default SPI settings
 DEFAULT_SPI_BUS = 0
-DEFAULT_SPI_DEV = 1
+DEFAULT_SPI_DEV = 0
 DEFAULT_SPI_SPEED = 4_000_000  # 4 MHz
 DEFAULT_SPI_MODE = 0b00        # SPI Mode 0
 
 
 class EPD42:
-    """Driver for WeAct Studio 4.2" E-Paper (SSD1683, 400x300).
+    """Waveshare 4.2" V2 e-Paper Module" (400x300).
 
     Supports full refresh, fast refresh, and partial refresh modes.
     """
@@ -55,7 +67,7 @@ class EPD42:
 
         Args:
             pins: dict with keys 'dc', 'cs', 'rst', 'busy' mapping to GPIO line numbers.
-                  Defaults to Orange Pi Zero 2W WeAct pinout.
+                  Defaults to Waveshare 4.2" V2 e-Paper Module pinout.
             spi_bus: SPI bus number (default 0)
             spi_dev: SPI device number (default 0)
             spi_speed: SPI clock speed in Hz (default 4MHz)
