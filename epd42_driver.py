@@ -90,18 +90,33 @@ class EPD42:
         # GPIO setup
         self.chip = gpiod.Chip(gpiochip)
 
-        self.dc = self.chip.get_line(self.pins["dc"])
-        self.dc.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
-        #Commenting out these lines as they are related to the CS that GPT told me to take out.
-        #self.cs = self.chip.get_line(self.pins["cs"])
-        #self.cs.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
+        self.dc = self._request_line(self.pins["dc"], gpiod.LINE_REQ_DIR_OUT, default_val=1)
+        self.rst = self._request_line(self.pins["rst"], gpiod.LINE_REQ_DIR_OUT, default_val=1)
+        self.busy = self._request_line(self.pins["busy"], gpiod.LINE_REQ_DIR_IN)
 
-        self.rst = self.chip.get_line(self.pins["rst"])
-        self.rst.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
+    def _request_line(self, pin_num, direction, default_val=0):
+        """
+        Request a GPIO line, releasing and re-requesting if already held.
+        This handles the [Errno 16] Device or resource busy error caused by
+        a previous run crashing without releasing its GPIO lines.
+        """
+        line = self.chip.get_line(pin_num)
+        kwargs = {"consumer": "epd", "type": direction}
+        if direction == gpiod.LINE_REQ_DIR_OUT:
+            kwargs["default_vals"] = [default_val]
+        else:
+            kwargs["flags"] = gpiod.LINE_REQ_FLAG_BIAS_DISABLE
 
-        self.busy = self.chip.get_line(self.pins["busy"])
-        self.busy.request(consumer="epd", type=gpiod.LINE_REQ_DIR_IN,
-                          flags=gpiod.LINE_REQ_FLAG_BIAS_DISABLE)
+        try:
+            line.request(**kwargs)
+        except OSError as e:
+            if e.errno == 16:  # EBUSY — line held by a dead/crashed consumer
+                line.release()
+                line = self.chip.get_line(pin_num)
+                line.request(**kwargs)
+            else:
+                raise
+        return line
 
     def close(self):
         """Release all GPIO lines and close SPI."""
