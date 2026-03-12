@@ -133,8 +133,8 @@ class EPD42:
         self.dc.set_value(0)
         #self.cs.set_value(0) #Removing references to CS
         self.spi.writebytes([cmd])
-        self.cs.set_value(1)
-        #self.dc.set_value(1) #Removing references to CS
+        #self.cs.set_value(1) #Removing references to CS
+        self.dc.set_value(1)
 
     def _send_data(self, val):
         """Send a single data byte (DC=HIGH)."""
