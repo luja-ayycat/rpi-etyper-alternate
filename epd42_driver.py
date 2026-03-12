@@ -92,9 +92,9 @@ class EPD42:
 
         self.dc = self.chip.get_line(self.pins["dc"])
         self.dc.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
-
-        self.cs = self.chip.get_line(self.pins["cs"])
-        self.cs.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
+        #Commenting out these lines as they are related to the CS that GPT told me to take out.
+        #self.cs = self.chip.get_line(self.pins["cs"])
+        #self.cs.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
 
         self.rst = self.chip.get_line(self.pins["rst"])
         self.rst.request(consumer="epd", type=gpiod.LINE_REQ_DIR_OUT, default_vals=[1])
@@ -106,7 +106,7 @@ class EPD42:
     def close(self):
         """Release all GPIO lines and close SPI."""
         self.dc.release()
-        self.cs.release()
+        #self.cs.release() #Removing references to CS
         self.rst.release()
         self.busy.release()
         self.spi.close()
@@ -131,7 +131,7 @@ class EPD42:
     def _send_command(self, cmd):
         """Send a command byte (DC=LOW)."""
         self.dc.set_value(0)
-        self.cs.set_value(0)
+        #self.cs.set_value(0) #Removing references to CS
         self.spi.writebytes([cmd])
         self.cs.set_value(1)
         self.dc.set_value(1)
@@ -139,18 +139,18 @@ class EPD42:
     def _send_data(self, val):
         """Send a single data byte (DC=HIGH)."""
         self.dc.set_value(1)
-        self.cs.set_value(0)
+        #self.cs.set_value(0) #Removing references to CS
         self.spi.writebytes([val])
         self.cs.set_value(1)
 
     def _send_data_bulk(self, data):
         """Send bulk data (DC=HIGH, CS held LOW for entire transfer)."""
         self.dc.set_value(1)
-        self.cs.set_value(0)
+        #self.cs.set_value(0) #Removing references to CS
         chunk_size = 4096
         for i in range(0, len(data), chunk_size):
             self.spi.writebytes(data[i:i + chunk_size])
-        self.cs.set_value(1)
+        #self.cs.set_value(1) #Removing references to CS
 
     def _set_window(self):
         """Set the RAM window to full screen."""
