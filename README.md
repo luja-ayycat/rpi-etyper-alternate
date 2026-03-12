@@ -62,7 +62,7 @@ then
 I don't know if you need to install the extra things that Git asks you to install. We chose yes.
 
 ### 4. Clone this repo
-`git clone --branch landscape --single-branch https://github.com/luja-ayycat/rpi-etyper`
+`git clone --branch landscape --single-branch https://github.com/luja-ayycat/rpi-etyper-alternate`
 
 ### 5. Install dependencies and service
 
