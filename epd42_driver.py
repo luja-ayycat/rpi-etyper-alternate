@@ -134,14 +134,14 @@ class EPD42:
         #self.cs.set_value(0) #Removing references to CS
         self.spi.writebytes([cmd])
         self.cs.set_value(1)
-        self.dc.set_value(1)
+        #self.dc.set_value(1) #Removing references to CS
 
     def _send_data(self, val):
         """Send a single data byte (DC=HIGH)."""
         self.dc.set_value(1)
         #self.cs.set_value(0) #Removing references to CS
         self.spi.writebytes([val])
-        self.cs.set_value(1)
+        #self.cs.set_value(1) #Removing references to CS
 
     def _send_data_bulk(self, data):
         """Send bulk data (DC=HIGH, CS held LOW for entire transfer)."""
