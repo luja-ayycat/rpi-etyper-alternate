@@ -33,7 +33,15 @@ import spidev
 import gpiod
 import time
 from PIL import Image
+import subprocess
 
+def _force_release_gpio_lines(pins, chip="gpiochip0"):
+    """Force-release stale GPIO claims left by crashed processes."""
+    for name, pin in pins.items():
+        subprocess.run(
+            ["sudo", "gpioset", "--mode=time", "--sec=0", chip, f"{pin}=0"],
+            capture_output=True
+        )
 # Display dimensions
 EPD_WIDTH = 400
 EPD_HEIGHT = 300
